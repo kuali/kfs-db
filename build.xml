@@ -1,0 +1,249 @@
+<?xml version="1.0"?>
+<!--
+   - The Kuali Financial System, a comprehensive financial management system for higher education.
+   - 
+   - Copyright 2005-2014 The Kuali Foundation
+   - 
+   - This program is free software: you can redistribute it and/or modify
+   - it under the terms of the GNU Affero General Public License as
+   - published by the Free Software Foundation, either version 3 of the
+   - License, or (at your option) any later version.
+   - 
+   - This program is distributed in the hope that it will be useful,
+   - but WITHOUT ANY WARRANTY; without even the implied warranty of
+   - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   - GNU Affero General Public License for more details.
+   - 
+   - You should have received a copy of the GNU Affero General Public License
+   - along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ -->
+<project name="kfs-db" default="help" basedir="."
+	xmlns:ivy="antlib:org.apache.ivy.ant">
+	<!-- run the help target to view usage instructions for public targets -->
+
+	<taskdef resource="net/sf/antcontrib/antlib.xml">
+		<classpath>
+	        <fileset dir="build">
+	            <include name="ant-contrib*.jar" />
+	        </fileset>
+		</classpath>
+	</taskdef>
+
+	<target name="echo-properties" depends="init-properties" description="Print all build properties that have been set">
+		<echoproperties />
+	</target>
+
+	<target name="init-property-files">
+		<if>
+			<available file="${user.home.safe}/kfs-build.properties" />
+			<then>
+				<echo message="Reading Properties: ${user.home.safe}/kfs-build.properties" />
+				<property file="${user.home.safe}/kfs-build.properties" />
+			</then>
+		</if>
+		<echo message="Reading Properties: build/properties/build.properties" />
+		<property file="build/properties/build.properties" />
+	</target>
+		
+	<target name="init-properties" depends="init-core-properties,init-property-files,init-base-properties,init-database-properties" />
+	
+	<target name="init-core-properties">
+		<pathconvert property="basedir.safe" dirsep="/" pathsep=";">
+			<path location="${basedir}" />
+		</pathconvert>
+		<pathconvert property="user.home.safe" dirsep="/" pathsep=";">
+			<path location="${user.home}" />
+		</pathconvert>
+	</target>
+	
+	<target name="init-base-properties" depends="init-property-files">
+		<tstamp><format property="build.version" pattern="'KFS ${kfs.version}' MM/dd/yyyy hh:mm aa" /></tstamp>
+	  	<tstamp><format property="current.year" pattern="yyyy" locale="en,US" /></tstamp>
+
+		<property name="fail.when.compile.fails" value="true"/>
+
+		<condition property="appenders" value="INFO, LogFile, StdOut" else="INFO, LogFile"><isset property="is.local.build" /></condition>
+		
+		<condition property="use.quartz.jdbc.jobstore" value="false" else="true"><isset property="is.local.build" /></condition>
+	</target>
+	
+	<target name="init-database-properties" depends="init-property-files">
+		<condition property="datasource.url" value="${mysql.datasource.url}" else="${oracle.datasource.url}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+		<condition property="impex.db.type" value="mysql" else="oracle"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+		<condition property="datasource.driver.class" value="${mysql.driver.class}" else="${oracle.driver.class}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+		<condition property="real.datasource.driver.class" value="${mysql.driver.class}" else="${oracle.driver.class}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+		<condition property="p6spy.real.driver.class" value="${mysql.driver.class}" else="${oracle.driver.class}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+		<condition property="pool.datasource.class" value="${non.xa.pool.datasource.class}"><not><equals arg1="${connection.pool.impl}" arg2="XAPool" /></not></condition>
+		<condition property="datasource.ojb.sequence.manager" value="${mysql.ojb.sequence.manager}" else="${oracle.ojb.sequence.manager}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+
+		<condition property="impex.admin.username" value="${mysql.impex.admin.username}" else="${oracle.impex.admin.username}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+		<condition property="impex.admin.password" value="${mysql.impex.admin.password}" else="${oracle.impex.admin.password}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+
+		<condition property="rice.server.impex.admin.username" value="${mysql.impex.admin.username}" else="${oracle.impex.admin.username}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+		<condition property="rice.server.impex.admin.password" value="${mysql.impex.admin.password}" else="${oracle.impex.admin.password}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+
+		<property name="rice.server.datasource.driver.class" value="${datasource.driver.class}" />
+		<property name="rice.server.datasource.url" value="${datasource.url}" />
+		<condition property="rice.server.datasource.platform" value="${mysql.server.datasource.platform}" else="${oracle.server.datasource.platform}"><equals arg1="${datasource.ojb.platform}" arg2="${mysql.ojb.platform}" /></condition>
+		<pathconvert property="drivers.path" dirsep="/" pathsep=";">
+			<path location="${drivers.directory}" />
+		</pathconvert>
+	</target>
+
+	<target name="refresh-db" depends="refresh-rice-db,refresh-kfs-db" description="Refreshes the KFS and Rice database schema(s) for the current build environment" />
+	
+	<target name="refresh-rice-db" depends="init-properties" description="Refreshes the Rice component of the database for the current build environment">
+		<!-- for Mysql, attempt to remove the schema for the admin URL -->
+		<propertyregex property="rice.server.adminUrl" defaultvalue="${rice.server.datasource.url}"
+		              input="${rice.server.datasource.url}"
+		              regexp="^(.*)/${rice.server.datasource.username}$$"
+		              select="\1"
+		              casesensitive="true" />
+		
+		<echo>
+Importing Rice tables into the database using the information shown below:
+
+DB Driver = ${real.datasource.driver.class}
+DB URL    = ${rice.server.datasource.url}
+Username  = ${rice.server.datasource.username}
+Password  = $${rice.server.datasource.password} (not shown)
+
+DB Admin URL   = ${rice.server.adminUrl}   (used for creating/recreating schema/user)
+Admin Username = ${rice.server.impex.admin.username}
+Admin Password = $${rice.server.impex.admin.password} (not shown)
+		</echo>
+		<mkdir dir="${all.temp.directory}" />
+		<property name="impex.properties" location="${all.temp.directory}/impex-build.properties"/>
+	    <property name="impex.log.level" value="info" />
+		<property name="rice.impex.import.targets" value="drop-schema create-schema import" />
+
+		<!-- build temp impex-build.properties -->
+		<echo append="false" file="${impex.properties}">
+			torque.project=kfs
+			torque.schema.dir=${basedir.safe}/kfs-db/rice
+			torque.sql.dir=${all.temp.directory}/sql
+			torque.output.dir=${all.temp.directory}/sql
+
+			import.torque.database=${impex.db.type}
+			import.torque.database.driver=${real.datasource.driver.class}
+			import.torque.database.url=${rice.server.datasource.url}
+			import.torque.database.user=${rice.server.datasource.username}
+			import.torque.database.schema=${rice.server.datasource.username}
+			import.torque.database.password=${rice.server.datasource.password}
+		    import.torque.log=${impex.log.level}
+
+			liquibase.logLevel=${liquibase.logLevel}
+			
+			post.import.liquibase.project=kfs
+			post.import.liquibase.xml.directory=${basedir.safe}/rice-data
+			post.import.liquibase.contexts=bootstrap,demo
+
+			import.admin.url=${rice.server.adminUrl}
+			import.admin.user=${rice.server.impex.admin.username}
+			import.admin.password=${rice.server.impex.admin.password}
+			
+			oracle.usermaint.user=${oracle.impex.tool.schema}
+			
+			drivers.directory=${drivers.path}
+		</echo>
+		<!-- run import tool for Rice tables/objects -->
+		<!-- Due to CloverETL issues with execution directory, we need to run Ant
+		     this way to fork the process so that the new JVM starts up within the
+		     base directory for the impex project -->
+		<java classname="org.apache.tools.ant.Main"
+		      fork="true"
+		      failonerror="true" dir="${basedir.safe}/kfs-db/db-impex/impex">
+		    <classpath path="${java.class.path}" />
+		    <jvmarg value="-Xmx1g" />
+			<arg value="-Dimpex.properties.file=${impex.properties}" />
+			<arg line="${rice.impex.import.targets}"/>
+		</java>
+	</target>
+	
+	<target name="refresh-kfs-db" depends="init-properties" description="Refreshes the KFS components of the database for the current build environment">
+		<!-- for Mysql, attempt to remove the schema for the admin URL -->
+		<propertyregex property="adminUrl" defaultvalue="${datasource.url}"
+		              input="${datasource.url}"
+		              regexp="^(.*)/${datasource.username}$$"
+		              select="\1"
+		              casesensitive="true" />
+		
+		<echo>
+Importing KFS tables into the database using the information shown below:
+
+DB Driver = ${real.datasource.driver.class}
+DB URL    = ${datasource.url}
+Username  = ${datasource.username}
+Password  = $${datasource.password} (not shown)
+
+DB Admin URL   = ${adminUrl}   (used for creating/recreating schema/user)
+Admin Username = ${impex.admin.username}
+Admin Password = $${impex.admin.password} (not shown)
+		</echo>
+		<mkdir dir="${all.temp.directory}" />
+		<property name="impex.properties" location="${all.temp.directory}/impex-build.properties"/>
+		<property name="impex.log.level" value="info" />
+		<!-- special condition here - we don't want to drop the schema if we are importing both Rice and KFS into the same schema -->
+		<if>
+			<equals arg1="${datasource.url}${datasource.username}" arg2="${rice.server.datasource.url}${rice.server.datasource.username}"/>
+			<then>
+				<property name="dont.drop.kfs.schema" value="true"/>
+			</then>
+		</if>
+		<condition property="kfs.impex.import.targets" value="import" else="drop-schema create-schema import"><istrue value="${dont.drop.kfs.schema}"/></condition>
+
+		<!-- build temp impex-build.properties -->
+		<echo append="false" file="${impex.properties}">
+			torque.project=kfs
+			torque.schema.dir=${basedir.safe}/kfs-db/development
+			torque.sql.dir=${all.temp.directory}/sql
+			torque.output.dir=${all.temp.directory}/sql
+
+			import.torque.database=${impex.db.type}
+			import.torque.database.driver=${real.datasource.driver.class}
+			import.torque.database.url=${datasource.url}
+			import.torque.database.user=${datasource.username}
+			import.torque.database.schema=${datasource.username}
+			import.torque.database.password=${datasource.password}
+		    import.torque.log=${impex.log.level}
+		    
+			liquibase.logLevel=${liquibase.logLevel}
+
+			import.admin.url=${adminUrl}
+			import.admin.user=${impex.admin.username}
+			import.admin.password=${impex.admin.password}
+			
+			oracle.usermaint.user=${oracle.impex.tool.schema}
+			
+			drivers.directory=${drivers.path}
+		</echo>
+		<!-- run import tool for KFS tables/objects -->
+		<!-- Due to CloverETL issues with execution directory, we need to run Ant
+		     this way to fork the process so that the new JVM starts up within the
+		     base directory for the impex project -->
+		<java classname="org.apache.tools.ant.Main"
+		      fork="true"
+		      failonerror="true" dir="${basedir.safe}/kfs-db/db-impex/impex">
+		    <classpath path="${java.class.path}" />
+		    <jvmarg value="-Xmx1g" />
+			<arg value="-Dimpex.properties.file=${impex.properties}" />
+			<arg line="${kfs.impex.import.targets}"/>
+		</java>			
+	</target>
+	
+	<target name="help" depends="init-properties" description="Describe public targets">
+		<echo>
+	the following configuration files are involved in the build process
+			
+			- ${basedir.safe}/build.xml
+			- ${user.home.safe}/kfs-build.properties
+			- ${basedir.safe}/build/properties/*
+
+    To run the refresh-db Ant target:
+            This will use the information in your configuration files to log into the database and install the tables.
+			- The default impex database setup which will be used is in ${basedir.safe}/build/properties/database.properties, in particular the *impex* properties.
+			    -- You can copy any properties from there to your kfs-build.properties file to override the defaults in the project.
+		</echo>
+	</target>
+
+</project>
