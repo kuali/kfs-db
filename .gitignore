@@ -1,0 +1,4 @@
+/kfs-db/db-impex/impex/build/
+/kfs-db/db-impex/impex/*.cfg
+/kfs-db/db-impex/impex/velocity.log
+/kfs-db/db-impex/impex/workspace.prm
