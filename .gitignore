@@ -4,3 +4,6 @@
 /kfs-db/db-impex/impex/*.cfg
 /kfs-db/db-impex/impex/velocity.log
 /kfs-db/db-impex/impex/workspace.prm
+/kfs-db/db-impex/impex/impex.iml
+/kfs-db/db-impex/clover/clover.iml
+/build/temp
