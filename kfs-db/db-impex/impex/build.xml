@@ -1095,6 +1095,7 @@ END;
 			<arg value="-D${post.import.workflow.ingester.jdbc.url.property}=${import.torque.database.url}" />
 			<arg value="-D${post.import.workflow.ingester.username.property}=${import.torque.database.user}" />
 			<arg value="-D${post.import.workflow.ingester.password.property}=${import.torque.database.password}" />
+			<arg value="-Dadditional.kfs.config.locations=${additional.kfs.config.locations}" />
 			<arg line="${post.import.workflow.ingester.additional.command.line}"/>
 		</java>			
 	</target>
