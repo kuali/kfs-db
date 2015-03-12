@@ -231,7 +231,6 @@ Admin Password = $${impex.admin.password} (not shown)
 	</target>
 
   <target name="import-workflow-xml" ><!--depends="make-source,filter-local">-->
-    <echo>Classpath: ${java.class.path}</echo> 
     <echo message="Running Workflow Importer on ${workflow.dir}" />
     <java classname="org.kuali.kfs.sys.context.WorkflowImporter" fork="true">
       <jvmarg value="-Xms512m" />
