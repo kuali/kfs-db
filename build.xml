@@ -20,13 +20,7 @@
 <project name="kfs-db" default="help" basedir=".">
 	<!-- run the help target to view usage instructions for public targets -->
 
-	<taskdef resource="net/sf/antcontrib/antlib.xml">
-		<classpath>
-	        <fileset dir="build">
-	            <include name="ant-contrib*.jar" />
-	        </fileset>
-		</classpath>
-	</taskdef>
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
 
 	<target name="echo-properties" depends="init-properties" description="Print all build properties that have been set">
 		<echoproperties />
