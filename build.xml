@@ -17,8 +17,7 @@
    - You should have received a copy of the GNU Affero General Public License
    - along with this program.  If not, see <http://www.gnu.org/licenses/>.
  -->
-<project name="kfs-db" default="help" basedir="."
-	xmlns:ivy="antlib:org.apache.ivy.ant">
+<project name="kfs-db" default="help" basedir=".">
 	<!-- run the help target to view usage instructions for public targets -->
 
 	<taskdef resource="net/sf/antcontrib/antlib.xml">
@@ -228,8 +227,26 @@ Admin Password = $${impex.admin.password} (not shown)
 		    <jvmarg value="-Xmx1g" />
 			<arg value="-Dimpex.properties.file=${impex.properties}" />
 			<arg line="${kfs.impex.import.targets}"/>
-		</java>			
+		</java>
 	</target>
+
+  <target name="import-workflow-xml" ><!--depends="make-source,filter-local">-->
+
+    <echo message="Running Workflow Importer on ${workflow.dir}" />
+    <java classname="org.kuali.kfs.sys.context.WorkflowImporter" fork="true">
+      <jvmarg value="-Xms512m" />
+      <jvmarg value="-Xmx1g" />
+      <jvmarg value="-Drice.krad.componentPublishing.enabled=false" />
+      <jvmarg value="-Dorg.terracotta.quartz.skipUpdateCheck=true" />
+      <jvmarg value="-Dadditional.kfs.config.locations=${additional.kfs.config.locations}" />
+      <arg value="${workflow.dir}" />
+      <classpath>
+        <pathelement location="${java.class.path}" />
+        <pathelement location="${drivers.directory}" />
+      </classpath>
+    </java>
+
+  </target>
 	
 	<target name="help" depends="init-properties" description="Describe public targets">
 		<echo>
