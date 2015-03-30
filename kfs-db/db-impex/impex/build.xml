@@ -915,6 +915,8 @@ OUTPUT_DUMPS = false
 		<run-graph verbose="true" propertyfile="${basedir}/cloveretl.properties">
 			<fileset refid="graph.files" />
 		</run-graph>
+	
+		<fixcrlf srcdir="${torque.schema.dir}/data" includes="*.txt" eol="unix" />
 	</target>
 
 	<target name="import-data2" depends="create-clover-config-file,inittasks" if="import.two.schemas">
@@ -969,7 +971,9 @@ OUTPUT_DUMPS = false
 		<run-graph propertyfile="${basedir}/cloveretl.properties">
 			<fileset refid="graph.files.2" />
 		</run-graph>
-	</target>
+	
+		<fixcrlf srcdir="${torque.schema.dir.2}/data" includes="*.txt" eol="unix" />
+</target>
 
 	<!-- ================================= 
           target: export-data              
